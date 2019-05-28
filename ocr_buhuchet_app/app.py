@@ -28,17 +28,16 @@ def main():
 @app.route('/uploader', methods = ['GET', 'POST'])
 def upload_file():
     if request.method == 'POST':
-        print(request)
-        print(request.files)
-        print(request.files['file'])
-        f = request.files['file']
+        filepath = request.headers['Filepath']
+        f = open(filepath, 'rb')
         if SAVE_IMAGES_MODE:
             # filename wihtout extension
-            filename = f.filename[:f.filename.find('.')]
+            filename = filepath[:filepath.rfind('.')]
             file_images_dir = os.path.join('images', filename)
             if not os.path.exists(file_images_dir):
                 os.mkdir(file_images_dir)
-        if f.mimetype.endswith('pdf'):
+        
+        if filepath.endswith('pdf'):
             pages = convert_from_bytes(f.read())
             result = []
             i = 0
@@ -69,6 +68,8 @@ def upload_file():
             r = ocr_buhuchet(resp)
             result = r
         return jsonify(result)
+    
+    
 
 app.wsgi_app = ProxyFix(app.wsgi_app)
 if __name__ == "__main__":
