@@ -189,7 +189,7 @@ def ocr_buhuchet(data, debug_mode=False):
             line_string = ''.join([word['text'] for word in line['words']])
             # максимальное расстояние между у координатами для ячейкой с 
             # кодом и ячейки с данными
-            threshold = 2*(code_y_2 - code_y_1)
+            threshold = 1.2*(code_y_2 - code_y_1)
             for code in codes_y:
                 # проверяем каждый код, и если его y координаты несильно 
                 # отличаются от координат строки, то относим строку к коду
