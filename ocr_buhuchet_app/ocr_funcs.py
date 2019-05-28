@@ -22,13 +22,19 @@ months_dict = {
 
 
 
-def ocr_buhuchet(data, debug_mode=False):
+def ocr_buhuchet(data, debug_mode=False, img_path=None):
     if debug_mode:
         import numpy as np
         from PIL import ImageFont, ImageDraw, Image
         import cv2
         
     data = json.loads(data)
+    
+    if img_path is not None:
+        img = cv2.imread(img_path)
+    
+    if debug_mode and (img_path is None):
+        raise RuntimeError('No image for debug is provided')
         
     code_x_1 = None
     code = None    
@@ -39,28 +45,34 @@ def ocr_buhuchet(data, debug_mode=False):
             for line in smth['lines']:
                 line_bb = line['boundingBox']['vertices']
                 line_string = ''.join([word['text'] for word in line['words']])
-                '''
+                
                 if debug_mode:
-                    cv2.putText(img,line_string, (int(line_bb[0]['x']), int(line_bb[0]['y'])), cv2.FONT_HERSHEY_DUPLEX, 0.5, (0,0,255))
-                '''
+                    cv2.rectangle(img, (int(line_bb[0]['x']), int(line_bb[0]['y'])), (int(line_bb[2]['x']), int(line_bb[2]['y'])), (0,0,255), 2)
+                    font = ImageFont.truetype("DejaVuSans.ttf", 30, encoding='UTF-8')
+                    img_pil = Image.fromarray(img)
+                    draw = ImageDraw.Draw(img_pil)
+                    #draw.text((int(line_bb[0]['x']), int(line_bb[0]['y'])), line_string, fill=(255,0,0), font=font)
+                    img = np.asarray(img_pil)
+                
                 if 'код' in line_string.lower():
                     code_x_1 = int(line_bb[0]['x'])
                     #x_2 = int(line_bb[2]['x'])
                     code_y_1 = int(line_bb[0]['y'])
                     code_y_2 = int(line_bb[2]['y'])
                     
-                    '''
-                    if debug_mode:
-                        draw.rectangle(((int(line_bb[0]['x']), code_y_1), (int(line_bb[2]['x']), code_y_2)), fill=(0,255,255))
-                    '''
-                    
                     # максимальное расстояние, на которое должны отличаться
                     # y координаты ячейки "Код" и ячеек с датами
                     dates_max_threshold = 5*(code_y_2 - code_y_1)
-                    
-                    
                     break
-    
+
+    if debug_mode:
+        img_pil.show()
+        '''
+        img = cv2.resize(img, (0,0), fx=0.3, fy=0.3) 
+        cv2.imshow("window", img)
+        cv2.waitKey(0)
+        '''
+        
     date_cell = ''
     dates = []
     first_cell = True
@@ -138,7 +150,13 @@ def ocr_buhuchet(data, debug_mode=False):
     date_string_to_parse_tuple = namedtuple('date_string_to_parse', 'content datestr_type')
     datestr_type_date_pattern = re.compile('(\d{1,2})\s*' + months_re + '\w*\s*([\d]{4})')
     datestr_type_months_pattern = re.compile(months_re + '([А-Яа-я\-]*\s*)*' + months_re + '[А-Яа-я\-]*\s*([\d]{4})')
-    #print('DATES ', dates_x)
+    
+    if debug_mode:
+        print('DATES:')
+        for date in dates_x:
+            print(date)
+        print()
+    
     for date_str_dict in dates_x:
         try:
             # относим строки с датами к одному из типов: дата или месяцы, сохраняем типы
@@ -154,7 +172,7 @@ def ocr_buhuchet(data, debug_mode=False):
     
     dates.append(date_cell) # добавляем последнее
     dates_formatted = []
-    
+
     for date_string_to_parse in dates_new_x:
         # парсим и форматируем данные в зависимости от типа
         if date_string_to_parse.datestr_type == 'date':
@@ -168,10 +186,31 @@ def ocr_buhuchet(data, debug_mode=False):
             month1 = months_dict[date_string_parsed.group(1)]
             month2 = months_dict[date_string_parsed.group(3)]
             year = date_string_parsed.group(4)
-            date = month1 + '-' + month2 + '.' + year
+            #date = month1 + '-' + month2 + '.' + year
+            if month2 == '3':
+                # март (1-й квартал)
+                day = 31
+            elif month2 == '6':
+                # июнь (2-й квартал)
+                day = 30
+            elif month2 == '9':
+                # сентябрь (3-й квартал)
+                day = 30
+            elif month2 == '12':
+                # декабрь (4-й квартал)
+                day = 31
+            else:
+                # квартал не распознан
+                continue
+            date = str(day) + '.' + month2 + '.' + year
         if date not in dates_formatted:
             dates_formatted.append(date)
-    #print('DATES PARSED', dates_formatted)
+    
+    if debug_mode:
+        print('DATES PARSED:')
+        for date in dates_formatted:
+            print(date)
+        print()
     
     # sort lines and find nums
     for page in data['results'][0]['results'][0]['textDetection']['pages']:
@@ -189,7 +228,7 @@ def ocr_buhuchet(data, debug_mode=False):
             line_string = ''.join([word['text'] for word in line['words']])
             # максимальное расстояние между у координатами для ячейкой с 
             # кодом и ячейки с данными
-            threshold = 1.2*(code_y_2 - code_y_1)
+            threshold = 0.5*(code_y_2 - code_y_1)
             for code in codes_y:
                 # проверяем каждый код, и если его y координаты несильно 
                 # отличаются от координат строки, то относим строку к коду
@@ -206,7 +245,7 @@ def ocr_buhuchet(data, debug_mode=False):
                     if str(num) != code['name']:
                         # пропускаем, если нашли ячейку с кодом
                         try:
-                            num = re.search('\(*([0-9]+)\)*', num).group(0)
+                            num = re.search('\(*([0-9]+)\)*', num).group(1)
                         except:
                             continue
                         codes_nums[code['name']].append(num)
@@ -223,7 +262,16 @@ def ocr_buhuchet(data, debug_mode=False):
             try:
                 codes_dates_dict[code][dates_formatted[ind]] = value
             except:
-                #print('Index error: ', code, ind, value)
+                if debug_mode:
+                    print('Index error: code %s index %s value %s' % (code, ind, value))
                 pass
+    
+    if debug_mode:
+        print('RESULTS:')
+        for result in codes_dates_dict:
+            print(result)
+            print(codes_dates_dict[result])
+        print()
+        
     return codes_dates_dict
 
