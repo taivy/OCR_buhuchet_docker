@@ -248,7 +248,7 @@ def ocr_buhuchet(data, debug_mode=False, img_path=None):
                             num = re.search('\(*([0-9]+)\)*', num).group(1)
                         except:
                             continue
-                        codes_nums[code['name']].append(num)
+                        codes_nums[code['name']].append(int(num))
                         
                         
     # итоговый словарь с кодами и датами
