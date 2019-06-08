@@ -8,4 +8,4 @@ services:
           - .env
         image: taivy/ocr_buhuchet
         volumes:
-          - C:\\your_volume:/mounted
+          - C:\\docker_volumes:/mounted
