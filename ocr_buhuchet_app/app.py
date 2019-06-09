@@ -1,7 +1,5 @@
 #!/bin/sh
-
-
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, make_response
 from pdf2image import convert_from_bytes
 import io
 from itertools import chain
@@ -15,9 +13,8 @@ from ocr_funcs import ocr_buhuchet
 from crop import crop_frames
 
 
-SAVE_IMAGES_MODE = True
-DEBUG_MODE = False
-USE_RESPONSE_CACHE = False
+SAVE_IMAGES_MODE = os.environ.get('SAVE_IMAGES_MODE')
+DEBUG_MODE = os.environ.get('DEBUG_MODE')
 ALLOWED_EXTENSIONS = set(['pdf', 'png', 'jpg', 'bmp'])
 
 app = Flask(__name__)
@@ -62,22 +59,14 @@ def upload_file():
                 img_data = imgByteArr.getvalue()
                 response_path = os.path.join(file_images_dir, "%s_response.json" % str(i))
                 resp = None
-                if USE_RESPONSE_CACHE:
-                    if os.path.exists(response_path):
-                        with open(response_path, 'r') as f:
-                            resp = f.read()
                 if not resp:
-                    # если используется кэш, то файл в response_path пустой, 
-                    # нужно заново получать
                     resp = get_yandex_cloud_ocr_response(img_data)
                     resp_error = check_response(resp)
                     if resp_error is not None:
                         if "Image size exceededs limitation" in resp_error['message']:
                             err_i = 0
-                            # избегаем бесконечного цикла (может появиться и другая ошибка)
                             while resp_error and err_i < 10:
-                                
-                                print("Image size exceededs limitation")
+                                #print("Image size exceededs limitation")
                                 cropped_page.thumbnail((1000, 1000), Image.ANTIALIAS)
                                 cropped_page.save('ke.jpg', "JPEG")
                                 imgByteArr = io.BytesIO()
@@ -97,20 +86,10 @@ def upload_file():
                     result = list(chain(result, [r]))
                     print(result)
                 i+=1         
-            return jsonify(result)
         else:
             img_data = f.read()
             response_path = os.path.join(file_images_dir, "response.json")
-            if USE_RESPONSE_CACHE:
-                if os.path.exists(response_path):
-                    with open(response_path, 'r') as f:
-                        resp = f.read()
-                        if not resp:
-                            resp = get_yandex_cloud_ocr_response(img_data)
-                else:
-                    resp = get_yandex_cloud_ocr_response(img_data)
-            else:
-                resp = get_yandex_cloud_ocr_response(img_data)
+            resp = get_yandex_cloud_ocr_response(img_data)
             if SAVE_IMAGES_MODE:
                 image_path = os.path.join(file_images_dir, "image.jpg")
                 with open(image_path, 'wb') as outf:
@@ -120,8 +99,7 @@ def upload_file():
                     outf.write(resp)
             r = ocr_buhuchet(resp, debug_mode=DEBUG_MODE, img_path=img_for_debug_path)
             result = r
-            return jsonify(result)
-        return jsonify(result)
+        return make_response(jsonify(result), 200)
     
     
 app.wsgi_app = ProxyFix(app.wsgi_app)

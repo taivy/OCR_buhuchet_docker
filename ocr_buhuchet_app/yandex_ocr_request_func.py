@@ -1,25 +1,15 @@
 #!/bin/sh
 
-import subprocess
 import base64
 import requests
 import json
 import os
 
-imgfile = 'test_buhu.jpg'
-folderId = 'b1gjtg5ljkjdb3lmjv1t'
 
-'''
-with open(imgfile, 'rb') as img:
-    image_data = img.read()
-'''
-
-
-def get_yandex_cloud_ocr_response(image_data, folderId=folderId):
+def get_yandex_cloud_ocr_response(image_data):
     image_64_encode = base64.urlsafe_b64encode(image_data)
     image_64_encode = image_64_encode.decode('utf-8')
 
-    
     url = 'https://iam.api.cloud.yandex.net/iam/v1/tokens'
     json_request = {
             "yandexPassportOauthToken": os.environ.get('OAUTH_TOKEN')
@@ -29,7 +19,7 @@ def get_yandex_cloud_ocr_response(image_data, folderId=folderId):
 
     json_request = {
             "Authorization": "Bearer %s" % IAM_TOKEN,
-            "folderId": folderId,
+            "folderId": os.environ.get('FOLDER_ID'),
             "analyze_specs": [{
                 "content": image_64_encode,
                 "features": [{
