@@ -2,7 +2,6 @@
 from flask import Flask, render_template, request, jsonify, make_response
 from pdf2image import convert_from_bytes
 import io
-from itertools import chain
 import os
 import json
 from PIL import Image
@@ -19,6 +18,9 @@ ALLOWED_EXTENSIONS = set(['pdf', 'png', 'jpg', 'bmp'])
 
 app = Flask(__name__)
 
+
+def merge_dicts(dict1, dict2): 
+    dict1.update(dict2)
 
 def check_response(resp):
     try:
@@ -50,7 +52,7 @@ def upload_file():
                 os.mkdir(file_images_dir)
         if filepath.endswith('pdf'):
             pages = convert_from_bytes(f.read())
-            result = []
+            result = dict()
             i = 0
             for page in pages:
                 cropped_page = crop_frames(page, i=i)
@@ -83,8 +85,7 @@ def upload_file():
                         outf.write(resp)
                 r = ocr_buhuchet(resp, debug_mode=DEBUG_MODE, img_path=img_for_debug_path)
                 if r:
-                    result = list(chain(result, [r]))
-                    print(result)
+                    merge_dicts(result, r)
                 i+=1         
         else:
             img_data = f.read()
