@@ -109,7 +109,13 @@ def ocr_buhuchet(data, debug_mode=False, img_path=None):
             for line in block['lines']:
                 line_bb = line['boundingBox']['vertices']
                 line_string = ''.join([word['text'] for word in line['words']])
-                if abs(code_x_1 - int(line_bb[0]['x'])) < (code_x_2-code_x_1)*1.8:
+                
+                try:
+                    line_bb[0]['y']
+                except KeyError:
+                    continue
+                
+                if abs(code_x_1 - int(line_bb[0]['x'])) < (code_x_2-code_x_1)*3:
                     try:
                         if re.search('[А-Яа-я]', line_string) is not None:
                             # если в ячейке буквы, то это не код
@@ -291,6 +297,7 @@ def ocr_buhuchet(data, debug_mode=False, img_path=None):
         offset = 0.1
         # сортируем строки по y координатам
         # offset и round в сортировке нужны, чтобы допускалась погрешность в координатах
+        lines = list(filter(lambda line: 'y' in line['words'][0]['boundingBox']['vertices'][0].keys(), lines))
         lines.sort(key = lambda line: (round(int(line['words'][0]['boundingBox']['vertices'][0]['y'])//2*offset), int(line['words'][0]['boundingBox']['vertices'][0]['x'])))
         for line in lines:
             line_bb = line['boundingBox']['vertices']
@@ -303,6 +310,13 @@ def ocr_buhuchet(data, debug_mode=False, img_path=None):
                 # отличаются от координат строки, то относим строку к коду
                 y_1 = code['y_1']
                 y_2 = code['y_2']
+                
+                try:
+                    line_bb[0]['y']
+                    line_bb[2]['y']
+                except KeyError:
+                    continue
+                
                 if abs(y_1 - int(line_bb[0]['y'])) < threshold and abs(y_2 - int(line_bb[2]['y'])) < threshold:
                     '''
                     try:
