@@ -295,10 +295,10 @@ def ocr_buhuchet(data, debug_mode=False, img_path=None):
             for line in block['lines']:
                 lines.append(line)
         offset = 0.1
-        # сортируем строки по y координатам
-        # offset и round в сортировке нужны, чтобы допускалась погрешность в координатах
-        lines = list(filter(lambda line: 'y' in line['words'][0]['boundingBox']['vertices'][0].keys(), lines))
-        lines.sort(key = lambda line: (round(int(line['words'][0]['boundingBox']['vertices'][0]['y'])//2*offset), int(line['words'][0]['boundingBox']['vertices'][0]['x'])))
+        lines = list(filter(lambda line: 'y' in line['words'][0]['boundingBox']['vertices'][0].keys() and
+                            'x' in line['words'][0]['boundingBox']['vertices'][0].keys(), lines))
+        lines.sort(key = lambda line: (round(int(line['words'][0]['boundingBox']['vertices'][0]['y'])//2*offset), 
+                                       int(line['words'][0]['boundingBox']['vertices'][0]['x'])))
         for line in lines:
             line_bb = line['boundingBox']['vertices']
             line_string = ''.join([word['text'] for word in line['words']])
