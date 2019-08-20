@@ -112,6 +112,9 @@ def ocr_buhuchet(data, debug_mode=False, img_path=None):
                 
                 try:
                     line_bb[0]['y']
+                    line_bb[0]['x']
+                    line_bb[2]['y']
+                    line_bb[2]['x']
                 except KeyError:
                     continue
                 
@@ -134,12 +137,13 @@ def ocr_buhuchet(data, debug_mode=False, img_path=None):
                             continue
                     code_y = dict()
                     code_y['name'] = code
-                    y_1 = int(line_bb[0]['y'])
-                    y_2 = int(line_bb[2]['y'])
-                    code_y['y_1'] = y_1
-                    code_y['y_2'] = y_2
-                    codes_nums[code] = []
-                    codes_y.append(code_y)
+                    if line_bb[0].get('y', None) and line_bb[2].get('y', None):
+                        y_1 = int(line_bb[0]['y'])
+                        y_2 = int(line_bb[2]['y'])
+                        code_y['y_1'] = y_1
+                        code_y['y_2'] = y_2
+                        codes_nums[code] = []
+                        codes_y.append(code_y)
                 elif abs(code_y_1 - int(line_bb[0]['y'])) < dates_max_threshold and abs(code_y_2 - int(line_bb[2]['y'])) < dates_max_threshold:
                     if code_x_1 > int(line_bb[0]['x']) or 'Форма' in line_string:
                         # ячейка находится левее ячейки "Код" или это надпись "форма", пропускаем
